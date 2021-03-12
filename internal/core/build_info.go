@@ -16,10 +16,7 @@ import (
 
 type BuildInfo struct {
 	Version   *version.Version `json:"-"`
-	BuildDate string           `json:"build_date"`
 	GoVersion string           `json:"go_version"`
-	GitBranch string           `json:"git_branch"`
-	GitCommit string           `json:"git_commit"`
 	GoArch    string           `json:"go_arch"`
 	GoOS      string           `json:"go_os"`
 }

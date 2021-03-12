@@ -23,23 +23,6 @@
  *   - Delete temporary remote `scaleway-release` that was created earlier
  ******************************************************************************/
 
-// Import standard node library
-const { spawnSync } = require("child_process"),
-    readline = require("readline"),
-    fs = require("fs"),
-    util = require("util")
-;
-
-// Import third party library
-const gitRawCommits = require("git-raw-commits"),
-    semver = require("semver"),
-    getStream = require("get-stream"),
-    externalEditor = require("external-editor"),
-    _ = require("colors"),
-    { Octokit } = require("@octokit/rest"),
-    AWS = require('aws-sdk')
-;
-
 /*
  * Required parameters
  */
@@ -88,33 +71,8 @@ const S3_VERSION_OBJECT_NAME = "scw-cli-v2-version";
 // Name of the Docker image on hub.docker.com
 const DOCKER_IMAGE_NAME = "scaleway/cli";
 
-/*
- * Useful constant
- */
-const GITHUB_CLONE_URL = `git@github.com:${GITHUB_OWNER}/${GITHUB_REPO}.git`;
-const GITHUB_REPO_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}`;
-const _typeReg = /(?<type>[a-zA-Z]+)/;
-const _scopeReg = /(\((?<scope>.*)\))?/;
-const _messageReg = /(?<message>[^(]*)/;
-const _mrReg = /(\(#(?<mr>[0-9]+)\))?/;
-const COMMIT_REGEX = new RegExp(`${_typeReg.source}${_scopeReg.source}: *${_messageReg.source} *${_mrReg.source}`);
-
 
 async function main() {
-
-    /*
-     * Initialization
-     */
-
-    // Chdir to root dir
-    process.chdir(ROOT_DIR);
-
-    // Initialize github client
-    if (!GITHUB_TOKEN) {
-        throw new Error(`You must provide a valid GITHUB_TOKEN`)
-    }
-    octokit = new Octokit({ auth: GITHUB_TOKEN });
-
     // Initialize s3 client
     if (!SCW_ACCESS_KEY || !SCW_SECRET_KEY) {
         throw new Error(`You must provide a valid access and secret key`)
@@ -126,18 +84,6 @@ async function main() {
     });
 
     await prompt(`Make sure that your local Docker Daemon is logged on hub.docker.com AND that you can push to Scaleway's Docker organization.`.magenta);
-
-    //
-    // Initialize TMP_REMOTE
-    //
-    console.log("Adding temporary remote on local repo".blue);
-    git( "remote", "add", TMP_REMOTE, GITHUB_CLONE_URL);
-    console.log(`   Successfully created ${TMP_REMOTE} remote`.green);
-
-    console.log(`Make sure we are working on an up to date ${GITHUB_RELEASED_BRANCH} branch`.blue);
-    git( "fetch", TMP_REMOTE);
-    git( "checkout", `${TMP_REMOTE}/${GITHUB_RELEASED_BRANCH}`);
-    console.log(`   Successfully created ${TMP_REMOTE} remote`.green);
 
     //
     // Trying to find the latest tag to generate changelog
@@ -194,48 +140,6 @@ async function main() {
     await prompt(`Hit enter when its merged .....`.magenta);
 
     //
-    // Creating release
-    //
-
-    console.log("Compiling release binary".blue);
-    exec(BUILD_SCRIPT);
-
-    console.log("Create Github release".blue);
-    console.log("    create github release".gray);
-    let releaseResp = await octokit.repos.createRelease({
-        owner: GITHUB_OWNER,
-        repo: GITHUB_REPO,
-        tag_name: `v${newVersion}`,
-        target_commitish: GITHUB_RELEASED_BRANCH,
-        name: `v${newVersion}`,
-        body: changelog.body,
-        prerelease: semver.prerelease(newVersion) !== null,
-    });
-
-    console.log("    attach assets to the release".gray);
-    const releaseAssets = [
-        `scw-${newVersion}-darwin-x86_64`,
-        `scw-${newVersion}-darwin-arm64`,
-        `scw-${newVersion}-linux-x86_64`,
-        `scw-${newVersion}-linux-386`,
-        `scw-${newVersion}-windows-x86_64.exe`,
-        `scw-${newVersion}-windows-386.exe`,
-        `SHA256SUMS`,
-    ];
-    await Promise.all(releaseAssets.map((assetName) => {
-        return octokit.repos.uploadReleaseAsset({
-            owner: GITHUB_OWNER,
-            repo: GITHUB_REPO,
-            release_id: releaseResp.data.id,
-            name: assetName,
-            data: fs.readFileSync(`${BIN_DIR_PATH}/${assetName}`),
-        })
-    }));
-
-    console.log(`    Successfully created release: ${releaseResp.data.html_url}`.green);
-    await prompt(`Hit enter to continue .....`.magenta);
-
-    //
     // Update version file on s3
     //
     console.log("Updating version file on s3".blue);
@@ -247,48 +151,6 @@ async function main() {
     });
     console.log(`    Successfully updated s3 version file: https://${S3_DEVTOOL_BUCKET}.s3.${S3_DEVTOOL_BUCKET_REGION}.scw.cloud/${S3_VERSION_OBJECT_NAME}`.green);
     await prompt(`Hit enter to continue .....`.magenta);
-
-    //
-    // Update Docker version
-    //
-    console.log("Build and push a container image".blue);
-    docker("build", "-t", `scaleway/cli:v${newVersion}`, ".");
-    docker("push", `scaleway/cli:v${newVersion}`);
-
-    //
-    // Creating post release commit
-    //
-    console.log(`Make sure we pull the latest commit from ${GITHUB_RELEASED_BRANCH}`.blue);
-    git("fetch", TMP_REMOTE);
-    git("checkout", `${TMP_REMOTE}/${GITHUB_RELEASED_BRANCH}`);
-    console.log(`    Successfully checkout upstream/${GITHUB_RELEASED_BRANCH}`.green);
-
-    console.log(`Creating post release commit`.blue);
-    git("branch", "-D", TMP_BRANCH);
-    git("checkout", "-b", TMP_BRANCH);
-    replaceInFile(GO_VERSION_PATH, /Version = "[^"]*"/, `Version = "v${newVersion}+dev"`);
-    git("add", GO_VERSION_PATH);
-    git("commit", "-m", `chore: cleanup after v${newVersion} release`);
-    git("push", "-f", "--set-upstream", TMP_REMOTE, TMP_BRANCH);
-    git("checkout", GITHUB_RELEASED_BRANCH);
-    git("branch", "-D", TMP_BRANCH);
-    const postPrResp = await octokit.pulls.create({
-        owner: GITHUB_OWNER,
-        repo: GITHUB_REPO,
-        base: GITHUB_RELEASED_BRANCH,
-        head: TMP_BRANCH,
-        title: `chore: cleanup after v${newVersion} release`
-    });
-    console.log(`    Successfully created pull request: ${postPrResp.data.html_url}`.green);
-    await prompt(`Hit enter when it is merged .....`.magenta);
-
-    console.log(`Make sure we pull the latest commit from ${GITHUB_RELEASED_BRANCH}`.blue);
-    git("pull", TMP_REMOTE, GITHUB_RELEASED_BRANCH);
-    console.log(`    Successfully pulled ${GITHUB_RELEASED_BRANCH}`.green);
-
-    console.log("Remove temporary remote".blue);
-    git("remote", "remove", TMP_REMOTE);
-    console.log("    Successfully remove temporary remote".green);
 
     console.log(`🚀 Released with Success `.green);
 }
@@ -323,18 +185,6 @@ function replaceInFile(path, oldStr, newStr) {
     fs.writeFileSync(path, content);
 }
 
-function prompt(prompt) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout
-    });
-    return new Promise(resolve => {
-        rl.question(prompt, answer => {
-            resolve(answer);
-            rl.close();
-        });
-    });
-}
 
 function buildChangelog(newVersion, commits) {
     const changelogLines = { feat: [], fix: [], others: [] };

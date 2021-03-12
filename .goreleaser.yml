@@ -1,11 +1,9 @@
-# This is an example .goreleaser.yml file with some sane defaults.
-# Make sure to check the documentation at http://goreleaser.com
 before:
   hooks:
-    # You may remove this if you don't use go modules.
     - go mod download
     # you may remove this if you don't need go generate
     - go generate ./...
+
 builds:
   - env:
       - CGO_ENABLED=0
@@ -22,21 +20,32 @@ builds:
     ignore:
       - goos: darwin
         goarch: 386
+    ldflags:
+      - -X main.Version={{ .Version }}
+
 archives:
   - format: binary
+
 checksum:
-  name_template: 'checksums.txt'
+  name_template: 'SHA256SUMS'
+  algorithm: sha256
+
 snapshot:
   name_template: "{{ .Tag }}-next"
+
 changelog:
   sort: asc
   filters:
     exclude:
       - '^docs:'
       - '^test:'
+
 dockers:
   - image_templates:
-      - scaleway/cli
+      - "scaleway/cli:latest"
+      - "scaleway/cli:{{ .Tag }}"
+      - "scaleway/cli:v{{ .Major }}"
+      - "scaleway/cli:v{{ .Major }}.{{ .Minor }}"
     extra_files:
       - .git/
       - internal/
@@ -44,3 +53,24 @@ dockers:
       - scripts/
       - go.mod
       - go.sum
+
+release:
+  # Repo in which the release will be created.
+  github:
+    owner: scaleway
+    name: scaleway-cli
+
+  # If set to auto, will mark the release as not ready for production
+  # in case there is an indicator for this in the tag e.g. v1.0.0-rc1
+  # If set to true, will mark the release as not ready for production.
+  prerelease: auto
+
+  name_template: "v{{ .Tag }}"
+
+source:
+  # Name template of the final archive.
+  name_template: '{{ .ProjectName }}-{{ .Version }}'
+
+  # Format of the archive.
+  # Any format git-archive supports, this supports too.
+  format: 'zip'

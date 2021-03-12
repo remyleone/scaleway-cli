@@ -364,7 +364,6 @@ func Test(config *TestConfig) func(t *testing.T) {
 				Version:   version.Must(version.NewSemver("v0.0.0+test")),
 				BuildDate: "unknown",
 				GoVersion: "runtime.Version()",
-				GitBranch: "unknown",
 				GitCommit: "unknown",
 				GoArch:    "runtime.GOARCH",
 				GoOS:      "runtime.GOOS",

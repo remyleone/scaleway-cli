@@ -13,16 +13,9 @@ import (
 
 var (
 	// Version is updated manually
-	Version = "v2.3.0+dev" // ${BUILD_VERSION:-`git describe --tags --dirty --always`}"
-
-	// These are initialized by the build script
-
-	BuildDate = "unknown" // date -u '+%Y-%m-%d_%I:%M:%S%p'
-	GitBranch = "unknown" // git symbolic-ref -q --short HEAD || echo HEAD"
-	GitCommit = "unknown" // git rev-parse --short HEAD
+	Version = "dev"
 
 	// These are GO constants
-
 	GoVersion = runtime.Version()
 	GoOS      = runtime.GOOS
 	GoArch    = runtime.GOARCH
@@ -30,11 +23,8 @@ var (
 
 func main() {
 	buildInfo := &core.BuildInfo{
-		Version:   version.Must(version.NewSemver(Version)), // panic when version does not respect semantic versionning
-		BuildDate: BuildDate,
+		Version:   version.Must(version.NewSemver(Version)), // panic when version does not respect semantic versioning
 		GoVersion: GoVersion,
-		GitBranch: GitBranch,
-		GitCommit: GitCommit,
 		GoOS:      GoOS,
 		GoArch:    GoArch,
 	}
