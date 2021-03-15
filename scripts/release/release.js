@@ -86,60 +86,6 @@ async function main() {
     await prompt(`Make sure that your local Docker Daemon is logged on hub.docker.com AND that you can push to Scaleway's Docker organization.`.magenta);
 
     //
-    // Trying to find the latest tag to generate changelog
-    //
-    console.log("Trying to find last release tag".blue);
-    const lastSemverTag = git("tag")
-        .trim()
-        .split("\n")
-        .filter(semver.valid)
-        .sort((a, b) => semver.rcompare(semver.clean(a), semver.clean(b)))[0];
-    const lastVersion =  semver.clean(lastSemverTag);
-    console.log(`    Last found release tag was ${lastSemverTag}`.green);
-
-    console.log("Listing commit since last release".blue);
-    const commits = (await getStream.array(gitRawCommits({ from: lastSemverTag, format: "%s" }))).map(c => c.toString().trim());
-    commits.forEach(c => console.log(`    ${c}`.grey));
-    console.log(`    We found ${commits.length} commits since last release`.green);
-
-    console.log(`    Last found release tag was ${lastSemverTag}`.grey);
-    const newVersion = semver.clean(await prompt("Enter new version: ".magenta));
-    if (!newVersion) {
-        throw new Error(`invalid version`);
-    }
-
-    //
-    // Creating release commit
-    //
-
-    console.log(`Updating ${README_PATH}, ${CHANGELOG_PATH} and ${GO_VERSION_PATH}`.blue);
-    const changelog = buildChangelog(newVersion, commits);
-    changelog.body = externalEditor.edit(changelog.body);
-
-    replaceInFile(README_PATH, lastVersion, newVersion);
-    replaceInFile(CHANGELOG_PATH, "# Changelog", `# Changelog\n\n${changelog.header}\n\n${changelog.body}\n`);
-    replaceInFile(GO_VERSION_PATH, /Version = "[^"]*"/, `Version = "v${newVersion}"`);
-    console.log(`    Update success`.green);
-
-    await prompt(`Please review ${README_PATH}, ${CHANGELOG_PATH} and ${GO_VERSION_PATH}. When everything is fine hit enter to continue ...`.magenta);
-
-    console.log(`Creating release commit`.blue);
-    git("checkout", "-b", TMP_BRANCH);
-    git("add", README_PATH, CHANGELOG_PATH, GO_VERSION_PATH);
-    git("commit", "-m", `chore: release ${newVersion}`);
-    git("push", "-f", "--set-upstream", TMP_REMOTE, TMP_BRANCH);
-
-    const prResp = await octokit.pulls.create({
-        owner: GITHUB_OWNER,
-        repo: GITHUB_REPO,
-        base: GITHUB_RELEASED_BRANCH,
-        head: TMP_BRANCH,
-        title: `chore: release v${newVersion}`
-    });
-    console.log(`    Successfully create pull request: ${prResp.data.html_url}`.green);
-    await prompt(`Hit enter when its merged .....`.magenta);
-
-    //
     // Update version file on s3
     //
     console.log("Updating version file on s3".blue);

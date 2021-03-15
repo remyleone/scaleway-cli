@@ -13,9 +13,8 @@ Scaleway CLI is a tool to help you pilot your Scaleway infrastructure directly f
 
 ## With a Package Manager (Recommended)
 
-A package manager allows to install and upgrade the Scaleway CLI with a single command. We recommend this installation mode for more simplicity and reliability:
-
-<!-- TODO: We support a growing set of package managers to feat your preferences and your platform. Note that some package managers are maintained by our community: -->
+A package manager can install and/or upgrade the Scaleway CLI with a single command.
+We recommend this installation mode for more simplicity and reliability:
 
 ### Homebrew
 
@@ -42,14 +41,6 @@ Install the lastest stable release on Windows using [Chocolatey](https://chocola
 choco install scaleway-cli
 ```
 
-<!--- TODO:
-### Others
-
-TODO: Add other package managers:
-- [Snap](https://snapcraft.io/)
-- [Apt](https://wiki.debian.org/Apt)
--->
-
 ## Manually
 
 ### Released Binaries
@@ -57,7 +48,7 @@ TODO: Add other package managers:
 We provide [static-compiled binaries](https://github.com/scaleway/scaleway-cli/releases/latest) for darwin (macOS), GNU/Linux, and Windows platforms.
 You just have to download the binary compatible with your platform to a directory available in your `PATH`:
 
-#### Mac OS
+#### Mac OS & Linux
 
 ```bash
 # Check that /usr/local/bin is in your PATH
@@ -67,8 +58,8 @@ echo $PATH
 # Download the release from github
 curl -o /usr/local/bin/scw -L "https://github.com/scaleway/scaleway-cli/releases/download/v2.3.0/scw-2.3.0-darwin-x86_64"
 
-# Allow executing file as program
-chmod +x /usr/local/bin/scw
+# Install the binary
+install scw-X.X.0-linux-x86_64 /usr/local/bin/scw
 
 # Init the CLI
 scw init
@@ -91,35 +82,6 @@ scw init
 
 You can download the last release here: https://github.com/scaleway/scaleway-cli/releases/download/v2.3.0/scw-2.3.0-windows-x86_64.exe<br/>
 [This official guide](https://docs.microsoft.com/en-us/previous-versions/office/developer/sharepoint-2010/ee537574%28v%3Doffice.14%29) explains how to add tools to your `PATH`.
-
-<!-- TODO:
-
-### Debian
-
-First, download [the `.deb` file](https://github.com/scaleway/scaleway-cli/releases/latest) compatible with your architecture:
-
-```bash
-export ARCH=amd64 # Can be 'amd64', 'arm', 'arm64' or 'i386'
-wget "https://github.com/scaleway/scaleway-cli/releases/download/v2.3.0/scw-v2.3.0-${ARCH}.deb" -O /tmp/scw.deb
-```
-
-Then, run the installation and remove the `.deb` file:
-```bash
-dpkg -i /tmp/scw.deb && rm -f /tmp/scw.deb
-```
--->
-
-<!-- TODO:
-## With a Docker Image
-
-### Official releases (Coming soon..)
-
-For each release, we deliver a tagged image on the [Scaleway Docker Hub](https://hub.docker.com/r/scaleway/cli/tags) so can run `scw` in a sandboxed way: _Coming soon..._
-
-```sh
-docker run scaleway/cli version
-```
--->
 
 ## Docker Image
 
